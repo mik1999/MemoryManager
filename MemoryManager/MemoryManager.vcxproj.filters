@@ -30,6 +30,15 @@
     <ClInclude Include="AllocatorBasedManager.h">
       <Filter>Файлы ресурсов</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\XorList\XorList\ListOperation.h">
+      <Filter>Файлы ресурсов</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\XorList\XorList\StackAllocator.h">
+      <Filter>Файлы ресурсов</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\XorList\XorList\XorList.h">
+      <Filter>Файлы ресурсов</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CMemoryManagerSwitcher.cpp">

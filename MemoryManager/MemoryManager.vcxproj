@@ -115,6 +115,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\XorList\XorList\ListOperation.h" />
+    <ClInclude Include="..\..\XorList\XorList\StackAllocator.h" />
+    <ClInclude Include="..\..\XorList\XorList\XorList.h" />
     <ClInclude Include="AllocationStrategy.h" />
     <ClInclude Include="AllocatorBasedManager.h" />
     <ClInclude Include="CAllocatedOn.h" />

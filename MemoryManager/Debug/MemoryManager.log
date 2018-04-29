@@ -1,2 +1,7 @@
-﻿  CMemoryManagerSwitcher.cpp
+﻿  Stack.h
+  Source.cpp
+  IMemoryManager.cpp
+  CMemoryManagerSwitcher.cpp
+  AllocationStrategy.cpp
+  Создание кода...
   MemoryManager.vcxproj -> C:\МФТИ\programs\Semester2\C++\MemoryManager\Debug\MemoryManager.exe

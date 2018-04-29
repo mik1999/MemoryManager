@@ -2,7 +2,7 @@
 
 namespace CMemoryManagerUtilityNamespace {
 
-	std::stack<AllocationSituation> situations;
+	Stack<AllocationSituation> situations;
 
 	bool forciblySwitchedToDefault = false;
 

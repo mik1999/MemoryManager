@@ -6,6 +6,8 @@
 #include <assert.h>
 
 #include "IMemoryManager.h"
+#include "Stack.h"
+
 struct alignas(alignof(std::max_align_t)) AllocationSituation {
 	enum Condition {
 		UsingManager,
@@ -39,5 +41,5 @@ public:
 	void switchTo(IMemoryManager &manager);
 	void switchToDefault();
 private:
-	std::stack<AllocationSituation*> _createdSituations;
+	Stack<AllocationSituation*> _createdSituations;
 };

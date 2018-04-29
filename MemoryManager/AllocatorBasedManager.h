@@ -17,6 +17,7 @@ public:
 
 	virtual void internalFree(void* ptr) {
 		_allocator.deallocate(reinterpret_cast<char*>(ptr), _allocSize[ptr]);
+		_allocSize.erase(ptr);
 	}
 private:
 	using value_type = typename Allocator::value_type;

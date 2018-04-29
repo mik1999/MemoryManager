@@ -1,0 +1,4 @@
+Default: 0.97
+STD allocator on char: 8.95
+STD allocator on long long: 8.96
+StackAllocator: 9.41

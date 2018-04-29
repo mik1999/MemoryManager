@@ -1,67 +1,14 @@
 #include "pch.h"
-
-#include <algorithm>
 #include <random>
 #include <vector>
 #include <queue>
-#include <set>
-#include <memory>
-#include <iostream>
-#include <stack>
-#include <assert.h>
-#include <map>
 
-#include "../MemoryManager/Stack.h"
+#include "../MemoryManager/CMemoryManagerSwitcher.h"
+#include "../MemoryManager/AllocatorBasedManager.h"
+#include "../MemoryManager/CAllocatedOn.h"
 
-template <class Allocator>
-class AllocatorBasedManager : public IMemoryManager {
-public:
-	AllocatorBasedManager() {}
-	virtual ~AllocatorBasedManager() {}
-	virtual void* internalAlloc(size_t size) {
-		void* ans = reinterpret_cast<void*> (_allocator.allocate(size));
-		_allocSize[ans] = size;
-		return ans;
-	}
-
-	virtual void internalFree(void* ptr) {
-		_allocator.deallocate(reinterpret_cast<char*>(ptr), _allocSize[ptr]);
-	}
-private:
-	using value_type = typename Allocator::value_type;
-	using charAllocator = typename Allocator::template rebind<char>::other;
-	using mapAllocator = typename Allocator::template rebind<std::pair<const void*, size_t> >::other;
-	charAllocator _allocator;
-	std::map<void*, size_t, std::less<void*>, mapAllocator> _allocSize;
-};
-
-#define DEBUG
-class IMemoryManager {
-public:
-	void* alloc(size_t size);
-	void free(void* ptr);
-	IMemoryManager();
-	virtual ~IMemoryManager();
-#ifdef DEBUG
-	void  setDebugBreakPoint(size_t allocNum);
-#endif // DEBUG
-private:
-	virtual void* internalAlloc(size_t size) = 0;
-	virtual void internalFree(void* ptr) = 0;
-#ifdef DEBUG
-	size_t _currentAllocNum;
-	struct Allocation {
-		Allocation() {}
-		Allocation(size_t number, size_t size, void* ptr) : number(number), size(size), ptr(ptr) {}
-		size_t number;
-		size_t size;
-		void* ptr;
-	};
-	std::map<void*, Allocation> _allocations;
-	std::set<size_t> _breakPoints;
-#endif // DEBUG
-};
-
+#include "../../XorList/XorList/StackAllocator.h"
+#include "../../XorList/XorList/ListOperation.h"
 
 std::random_device rd;
 
@@ -82,7 +29,7 @@ void testAllocations() {
 	T other = *ptr;
 	T* array = new T[SIZE];
 	for (int i = 0; i < 10; i++)
-	array[rd() % SIZE] = T();
+		array[rd() % SIZE] = T();
 	delete ptr;
 	delete[] array;
 }
@@ -104,258 +51,9 @@ void testBigMemoryAllocations() {
 			size_t index = rd() % SIZE;
 			array[index] = rd();
 		}
-	delete[] array;
+		delete[] array;
 	}
 
-}
-
-void * IMemoryManager::alloc(size_t size)
-{
-#ifdef DEBUG
-	_currentAllocNum++;
-	if (_breakPoints.count(_currentAllocNum) == 1)
-		throw std::bad_alloc();
-	void* ans = internalAlloc(size);
-	_allocations[ans] = Allocation(_currentAllocNum, size, ans);
-	return ans;
-
-#else
-	return internalAlloc(size);
-#endif // DEBUG
-}
-
-void IMemoryManager::free(void * ptr)
-{
-#ifdef DEBUG
-	_allocations.erase(ptr);
-	internalFree(ptr);
-#else
-	internalFree(ptr);
-#endif // DEBUG
-}
-
-IMemoryManager::IMemoryManager()
-{
-#ifdef DEBUG
-	_currentAllocNum = 0;
-#else
-	//do nothing
-#endif // DEBUG
-}
-
-IMemoryManager::~IMemoryManager()
-{
-#ifdef DEBUG
-	for (auto it = _allocations.begin(); it != _allocations.end(); it++)
-		std::cerr << "Memory sector haven't been freed! Allocation number: "
-		<< (*it).second.number << ", size: "
-		<< (*it).second.size << ", ptr: " << (*it).second.ptr << std::endl;
-#else
-	//do nothing
-#endif // DEBUG
-}
-
-#ifdef DEBUG
-void IMemoryManager::setDebugBreakPoint(size_t allocNum)
-{
-	_breakPoints.insert(allocNum);
-}
-#endif // DEBUG
-
-struct alignas(alignof(std::max_align_t)) AllocationSituation {
-	enum Condition {
-		UsingManager,
-		Default,
-		Invalid
-	};
-	void *operator new(size_t size);
-	void operator delete(void *ptr);
-	void *operator new[](size_t size);
-	void operator delete[](void *ptr);
-	void *operator new(size_t size, void *p);
-	void operator delete  (void* ptr, void* place);
-	AllocationSituation() = default;
-	AllocationSituation(Condition cond, IMemoryManager* ptrManager);
-	Condition condition;
-	IMemoryManager* manager;
-};
-
-class CMemoryManagerSwitcher {
-public:
-	CMemoryManagerSwitcher() = default;
-	CMemoryManagerSwitcher(const CMemoryManagerSwitcher& other) = delete;
-	~CMemoryManagerSwitcher();
-
-	CMemoryManagerSwitcher& operator =(const CMemoryManagerSwitcher& other) = delete;
-
-	static void *operator new(size_t size);
-
-	static void operator delete(void *ptr);
-
-	void switchTo(IMemoryManager &manager);
-	void switchToDefault();
-private:
-	Stack<AllocationSituation*> _createdSituations;
-};
-
-
-
-namespace CMemoryManagerUtilityNamespace {
-
-	Stack<AllocationSituation> situations;
-
-	bool forciblySwitchedToDefault = false;
-
-	void renew() {
-		while (!situations.empty() &&
-			situations.top().condition == AllocationSituation::Invalid)
-			situations.pop();
-	}
-
-	AllocationSituation& current() {
-		renew();
-		return situations.top();
-	}
-
-	bool isDefault() {
-		renew();
-		return forciblySwitchedToDefault || situations.empty() ||
-			current().condition == AllocationSituation::Default;
-	}
-
-	const size_t EXTRA_MEMORY_SIZE = sizeof(AllocationSituation);
-}
-
-using namespace CMemoryManagerUtilityNamespace;
-
-void * AllocationSituation::operator new(size_t size)
-{
-	return malloc(size);
-}
-
-void AllocationSituation::operator delete(void * ptr)
-{
-	free(ptr);
-}
-
-void * AllocationSituation::operator new[](size_t size)
-{
-	return malloc(size);
-}
-
-void AllocationSituation::operator delete[](void * ptr)
-{
-	free(ptr);
-}
-
-void * AllocationSituation::operator new(size_t size, void * ptr)
-{
-	return ptr;
-}
-
-void AllocationSituation::operator delete(void * ptr, void * place)
-{
-	//do nothing
-}
-
-AllocationSituation::AllocationSituation(Condition cond, IMemoryManager * ptrManager) :
-	condition(cond), manager(ptrManager)
-{
-	//initialize values
-}
-
-CMemoryManagerSwitcher::~CMemoryManagerSwitcher()
-{
-	while (!_createdSituations.empty()) {
-		_createdSituations.top()->condition = AllocationSituation::Invalid;
-		_createdSituations.pop();
-	}
-}
-
-void * CMemoryManagerSwitcher::operator new(size_t size)
-{
-	return malloc(size);
-}
-
-void CMemoryManagerSwitcher::operator delete(void * ptr)
-{
-	free(ptr);
-}
-
-void CMemoryManagerSwitcher::switchTo(IMemoryManager & manager)
-{
-	CMemoryManagerUtilityNamespace::
-		situations.push(AllocationSituation(
-			AllocationSituation::UsingManager, &manager
-		));
-	_createdSituations.push(&current());
-}
-
-void CMemoryManagerSwitcher::switchToDefault()
-{
-	CMemoryManagerUtilityNamespace::
-		situations.push(AllocationSituation(
-			AllocationSituation::Default, nullptr
-		));
-	_createdSituations.push(&current());
-}
-
-
-namespace CMemoryManagerUtilityNamespace {
-
-	inline void *myMalloc(size_t size) {
-		void* ptr;
-		if (isDefault()) {
-			ptr = malloc(size + EXTRA_MEMORY_SIZE);
-			new (reinterpret_cast<AllocationSituation*>(ptr)) AllocationSituation(
-				AllocationSituation::Default, nullptr
-			);
-		}
-		else {
-			forciblySwitchedToDefault = true; //alloc may use ::new()
-			ptr = current().manager->alloc(size + EXTRA_MEMORY_SIZE);
-			forciblySwitchedToDefault = false;
-			new (reinterpret_cast<AllocationSituation*>(ptr)) AllocationSituation(
-				current()
-			);
-		}
-		return reinterpret_cast<void*>(reinterpret_cast<char*>(ptr) + EXTRA_MEMORY_SIZE);
-	}
-
-	inline void myFree(void* ptr) {
-		char* blockBegin = reinterpret_cast<char*>(ptr) - EXTRA_MEMORY_SIZE;
-		AllocationSituation* situation =
-			reinterpret_cast<AllocationSituation*>(blockBegin);
-		if (situation->condition == AllocationSituation::Default) {
-			free(reinterpret_cast<void*>(blockBegin));
-		}
-		else {
-			IMemoryManager* manager = situation->manager;
-			forciblySwitchedToDefault = true; //free may use ::new and ::delete
-			manager->free(reinterpret_cast<void*>(blockBegin));
-			forciblySwitchedToDefault = false;
-		}
-	}
-}
-
-void *operator new(size_t size)
-{
-	return myMalloc(size);
-}
-
-void operator delete(void *ptr)
-{
-	myFree(ptr);
-}
-
-void *operator new[](size_t size)
-{
-	return myMalloc(size);
-}
-
-void operator delete[](void *ptr)
-{
-	myFree(ptr);
 }
 
 TEST(DefaultAllocationTestCase, SimpleTest) {
@@ -371,16 +69,21 @@ TEST(DefaultAllocationTestCase, DISABLED_BigMemoryTest) {
 }
 
 
-TEST(STDallocSwitchedCase, DISABLED_MainTest) {
+TEST(SwitchToAllocatorCase, DISABLED_Simple) {
 	AllocatorBasedManager <std::allocator<char> > STDallocManager;
 	CMemoryManagerSwitcher switcher;
+	std::stack<std::vector<int> > st;
+	st.push(std::vector<int>(7));
+	st.push(std::vector<int>(17));
 	switcher.switchTo(STDallocManager);
+	st.pop();
+	st.push(std::vector<int>(13));
 	testSimpleAllocations();
 	testComplicatedTypes();
 	testBigMemoryAllocations();
 }
 
-TEST(defaultAllocationAgainCase, Main) {
+TEST(SwitchToAllocatorCase, DISABLED_DefaultAllocAgain) {
 	CMemoryManagerSwitcher switcher;
 	AllocatorBasedManager<std::allocator<char> > STDallocManager;
 	switcher.switchTo(STDallocManager);
@@ -391,6 +94,166 @@ TEST(defaultAllocationAgainCase, Main) {
 	testBigMemoryAllocations();
 }
 
+TEST(SwitchToAllocatorCase, FewAllocatorsTest) {
+	CMemoryManagerSwitcher switcher;
+
+	testComplicatedTypes();
+
+	{
+		AllocatorBasedManager<std::allocator<char> > charManager;
+		switcher.switchTo(charManager);
+		testComplicatedTypes();
+	}
+
+	switcher.switchToDefault();
+	testComplicatedTypes();
+
+	{
+		AllocatorBasedManager<std::allocator<int> > intManager;
+		switcher.switchTo(intManager);
+		testComplicatedTypes();
+	}
+
+	switcher.switchToDefault();
+	testComplicatedTypes();
+
+
+	{
+		AllocatorBasedManager<StackAllocator<double> > stackManager;
+		switcher.switchTo(stackManager);
+		testComplicatedTypes();
+	}
+
+	switcher.switchToDefault();
+	testComplicatedTypes();
+
+}
+
+TEST(SwitcherRAII, Test1) {
+	{
+		CMemoryManagerSwitcher switcher;
+		AllocatorBasedManager<std::allocator<char> > STDallocManager;
+		switcher.switchTo(STDallocManager);
+		testComplicatedTypes();
+	}
+	testComplicatedTypes();
+	{		
+		CMemoryManagerSwitcher switcher;
+		AllocatorBasedManager<std::allocator<char> > manager1;
+		AllocatorBasedManager<StackAllocator<double> > manager2;
+		std::map<int, int> m;
+		m[5] = 7;
+		switcher.switchTo(manager1);
+		m[4] = 8;
+		switcher.switchTo(manager2);
+		m[10] = -1;
+		switcher.switchTo(manager1);
+		m[-1] = 0;
+	}
+	testSimpleAllocations();
+	{
+		CMemoryManagerSwitcher switcher1;
+		AllocatorBasedManager<std::allocator<char> > manager1;
+		switcher1.switchTo(manager1);
+		int* ptr = new int; //ptr must be deleted with manager1
+		{
+			CMemoryManagerSwitcher switcher2;
+			AllocatorBasedManager<StackAllocator<int> > manager2;
+			switcher2.switchTo(manager2);
+			testComplicatedTypes();
+			switcher2.switchToDefault();
+		}
+		delete ptr;
+	}
+}
+
+double workingTime(std::list<ListOperation<int> > &ops) {
+	clock_t begTime = clock();
+	std::list<int> l;
+	for (auto op : ops)
+		op(l);
+	clock_t endTime = clock();
+	return double(endTime - begTime) / CLOCKS_PER_SEC;
+}
+
+TEST(WorkingTimeCompare, DISABLED_Main) {
+	CMemoryManagerSwitcher switcher;
+	AllocatorBasedManager<std::allocator<char> > manager1;
+	AllocatorBasedManager<std::allocator<long long> > manager2;
+	AllocatorBasedManager<StackAllocator<char> > manager3;
+	auto ops = generateRandomLeapOperations<int, rand>(1000000);
+	std::ofstream workingTimeCompareResult("workingTimeCompareResult.txt");
+	switcher.switchToDefault();
+	workingTimeCompareResult << std::fixed << std::setprecision(2);
+	workingTimeCompareResult << "Default: " << workingTime(ops) << "\n";
+	switcher.switchTo(manager1);
+	workingTimeCompareResult << "STD allocator on char: " << workingTime(ops) << "\n";
+	switcher.switchTo(manager2);
+	workingTimeCompareResult << "STD allocator on long long: " << workingTime(ops) << "\n";
+	switcher.switchTo(manager3);
+	workingTimeCompareResult << "StackAllocator: " << workingTime(ops) << "\n";
+}
+
+class NarrowMemoryManager : public IMemoryManager {
+public:
+	void* internalAlloc(size_t size) {
+		if (size + totalSize > MAX_SIZE)
+			throw std::bad_alloc();
+		size += totalSize;
+		return malloc(size);
+	}
+	void internalFree(void* ptr) {
+		free(ptr);
+	}
+private:
+	size_t totalSize;
+	static const size_t MAX_SIZE = 100;
+};
+
+class SimpleAllocOnRuntimeHeap : public CRuntimeHeapAllocOn {
+public:
+	SimpleAllocOnRuntimeHeap() {
+		someData1 = 7;
+		someData2 = 42;
+	}
+	void someWork() {
+		someData1 += someData2;
+		someData2 = someData2 - someData1;
+		someData1 -= someData2;
+	}
+private:
+	int someData1;
+	int someData2;
+};
+
+class SimpleAllocOnDefaultManager : public CCurrentManagerAllocOn {
+private:
+	int someData;
+};
+
+template <class C>
+void AllocateSomeData(){
+	C* data = new C[200];
+	data[90] = C();
+	new(data + 70) C();
+	delete[] data;
+}
+
+TEST(CAllocatedOn, Test1) {
+	CMemoryManagerSwitcher switcher;
+	NarrowMemoryManager manager;
+	switcher.switchTo(manager);
+	// assert that new SimpleAllocOnDefaultManager doesn't call ::new 
+	ASSERT_THROW(AllocateSomeData<SimpleAllocOnDefaultManager>(), std::bad_alloc);
+}
+
+TEST(CAllocatedOn, Test2) {
+	CMemoryManagerSwitcher switcher;
+	NarrowMemoryManager manager;
+	switcher.switchTo(manager);
+	AllocateSomeData<SimpleAllocOnRuntimeHeap>();
+	ASSERT_TRUE(true);
+}
 
 int main(int argc, char **argv) {
 	::testing::InitGoogleTest(&argc, argv);
