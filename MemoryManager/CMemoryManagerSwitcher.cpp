@@ -4,8 +4,6 @@ namespace CMemoryManagerUtilityNamespace {
 
 	Stack<AllocationSituation> situations;
 
-	bool forciblySwitchedToDefault = false;
-
 	void renew() {
 		while (!situations.empty() &&
 			situations.top().condition == AllocationSituation::Invalid)
@@ -19,7 +17,7 @@ namespace CMemoryManagerUtilityNamespace {
 
 	bool isDefault() {
 		renew();
-		return forciblySwitchedToDefault || situations.empty() ||
+		return IMemoryManager::isSwitchedToDefault() || situations.empty() ||
 			current().condition == AllocationSituation::Default;
 	}
 
@@ -27,36 +25,6 @@ namespace CMemoryManagerUtilityNamespace {
 }
 
 using namespace CMemoryManagerUtilityNamespace;
-
-void * AllocationSituation::operator new(size_t size)
-{
-	return malloc(size);
-}
-
-void AllocationSituation::operator delete(void * ptr)
-{
-	free(ptr);
-}
-
-void * AllocationSituation::operator new[](size_t size)
-{
-	return malloc(size);
-}
-
-void AllocationSituation::operator delete[](void * ptr)
-{
-	free(ptr);
-}
-
-void * AllocationSituation::operator new(size_t size, void * ptr)
-{
-	return ptr;
-}
-
-void AllocationSituation::operator delete(void * ptr, void * place)
-{
-	//do nothing
-}
 
 AllocationSituation::AllocationSituation(Condition cond, IMemoryManager * ptrManager) :
 	condition(cond), manager(ptrManager)
@@ -112,9 +80,7 @@ namespace CMemoryManagerUtilityNamespace {
 			);
 		}
 		else {
-			forciblySwitchedToDefault = true; //alloc may use ::new()
 			ptr = current().manager->alloc(size + EXTRA_MEMORY_SIZE);
-			forciblySwitchedToDefault = false;
 			new (reinterpret_cast<AllocationSituation*>(ptr)) AllocationSituation(
 				current()
 			);
@@ -124,16 +90,14 @@ namespace CMemoryManagerUtilityNamespace {
 
 	inline void myFree(void* ptr) {
 		char* blockBegin = reinterpret_cast<char*>(ptr) - EXTRA_MEMORY_SIZE;
-		AllocationSituation* situation =
+		auto situation =
 			reinterpret_cast<AllocationSituation*>(blockBegin);
 		if (situation->condition == AllocationSituation::Default) {
 			free(reinterpret_cast<void*>(blockBegin));
 		}
 		else {
 			IMemoryManager* manager = situation->manager;
-			forciblySwitchedToDefault = true; //free may use ::new and ::delete
 			manager->free(reinterpret_cast<void*>(blockBegin));
-			forciblySwitchedToDefault = false;
 		}
 	}
 }
@@ -147,6 +111,12 @@ void operator delete(void *ptr)
 {
 	myFree(ptr);
 }
+
+void operator delete(void *ptr, size_t size)
+{
+	myFree(ptr);
+}
+
 
 void *operator new[](size_t size)
 {

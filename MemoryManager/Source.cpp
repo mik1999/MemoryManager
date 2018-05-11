@@ -26,7 +26,7 @@ void doSomething() {
 	switcher.switchTo(STDallocManager);
 	int *i = new int;
 	delete i;
-	//switcher.switchToDefault();
+	switcher.switchToDefault();
 }
 
 int main() {

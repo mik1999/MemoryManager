@@ -3,23 +3,19 @@
 #include <memory>
 #include <iostream>
 #include <stack>
-#include <assert.h>
+#include <cassert>
+#include <cstddef>
 
 #include "IMemoryManager.h"
 #include "Stack.h"
+#include "CAllocatedOn.h"
 
-struct alignas(alignof(std::max_align_t)) AllocationSituation {
+struct alignas(alignof(std::max_align_t)) AllocationSituation : public CRuntimeHeapAllocOn {
 	enum Condition {
 		UsingManager,
 		Default,
 		Invalid
 	};
-	void *operator new(size_t size);
-	void operator delete(void *ptr);
-	void *operator new[](size_t size);
-	void operator delete[](void *ptr);
-	void *operator new(size_t size, void *p);
-	void operator delete  (void* ptr, void* place);
 	AllocationSituation() = default;
 	AllocationSituation(Condition cond, IMemoryManager* ptrManager);
 	Condition condition;
@@ -43,3 +39,5 @@ public:
 private:
 	Stack<AllocationSituation*> _createdSituations;
 };
+
+namespace CMemoryManagerUtilityNamespace {};

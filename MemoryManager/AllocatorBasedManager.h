@@ -1,4 +1,5 @@
 #pragma once
+
 #include "IMemoryManager.h"
 #include <memory>
 #include <map>

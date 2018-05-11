@@ -1,0 +1,6 @@
+﻿  test.cpp
+c:\mipt\programs\semester2\c++\xorlist\xorlist\listoperation.h(133): warning C4715: generate_random_insertion_operation<int,&rand>: значение возвращается не при всех путях выполнения
+c:\mipt\programs\semester2\c++\xorlist\xorlist\listoperation.h(167): warning C4715: generate_random_access_operation<int>: значение возвращается не при всех путях выполнения
+c:\mipt\programs\semester2\c++\xorlist\xorlist\listoperation.h(145): warning C4715: generate_random_erase_operation<int>: значение возвращается не при всех путях выполнения
+c:\mipt\programs\semester2\c++\xorlist\xorlist\listoperation.h(188): warning C4715: generationFlagBourders: значение возвращается не при всех путях выполнения
+  GoogleTest.vcxproj -> C:\MIPT\programs\Semester2\C++\MemoryManager\Release\GoogleTest.exe

@@ -16,6 +16,10 @@ public:
 	void *operator new(size_t size, void *p);
 
 	void operator delete  (void* ptr, void* place);
+
+	void operator delete(void *ptr, size_t size);
+
+	void operator delete[](void *ptr, size_t size);
 };
 
 template<class AllocStrategy>
@@ -38,6 +42,18 @@ inline void * CAllocatedOn<AllocStrategy>::operator new[](size_t size)
 
 template<class AllocStrategy>
 inline void CAllocatedOn<AllocStrategy>::operator delete[](void * ptr)
+{
+	AllocStrategy::free(ptr);
+}
+
+template<class AllocStrategy>
+inline void CAllocatedOn<AllocStrategy>::operator delete(void * ptr, size_t size)
+{
+	AllocStrategy::free(ptr);
+}
+
+template<class AllocStrategy>
+inline void CAllocatedOn<AllocStrategy>::operator delete[](void * ptr, size_t size)
 {
 	AllocStrategy::free(ptr);
 }

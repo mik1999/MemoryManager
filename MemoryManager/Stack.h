@@ -1,6 +1,10 @@
+#pragma once
+
 #include <utility>
 #include <iostream>
 #include <fstream>
+
+#include "CAllocatedOn.h"
 
 template <typename T>
 class Stack;
@@ -12,7 +16,7 @@ template <typename T>
 bool operator ==(const Stack<T>& fst, const Stack<T>& scd);
 
 template <typename T>
-class Stack {
+class Stack : public CRuntimeHeapAllocOn {
 public:
 	Stack();
 	~Stack();
@@ -21,11 +25,6 @@ public:
 	Stack& operator = (Stack && other);
 	Stack(Stack && other);
 
-	void *operator new(size_t size);
-	void operator delete(void *ptr);
-	void *operator new[](size_t size);
-	void operator delete[](void *ptr);
-
 	T & top();
 	const T & top() const;
 	void pop();
@@ -33,30 +32,11 @@ public:
 	void push(T && value);
 	bool empty();
 private:
-	struct Node {
+	struct Node : public CRuntimeHeapAllocOn {
 		Node* prev;
 		T key;
 		Node() {}
 		Node(Node *prev, const T & key) : prev(prev), key(key) {}
-		void *operator new(size_t size)
-		{
-			return malloc(size);
-		}
-
-		void operator delete(void *ptr)
-		{
-			free(ptr);
-		}
-
-		void *operator new[](size_t size)
-		{
-			return malloc(size);
-		}
-			
-		void operator delete[](void *ptr)
-		{
-			free(ptr);
-		}
 	};
 	Node* _back;
 	void shiftElements(Stack & other);
@@ -102,30 +82,6 @@ template<typename T>
 inline Stack<T>::Stack(Stack && other) : _back(other._back)
 {
 	//initialize values
-}
-
-template<typename T>
-inline void * Stack<T>::operator new(size_t size)
-{
-	return malloc(size);
-}
-
-template<typename T>
-inline void Stack<T>::operator delete(void * ptr)
-{
-	free(ptr);
-}
-
-template<typename T>
-inline void * Stack<T>::operator new[](size_t size)
-{
-	return malloc(size);
-}
-
-template<typename T>
-inline void Stack<T>::operator delete[](void * ptr)
-{
-	free(ptr);
 }
 
 template<typename T>
@@ -198,7 +154,7 @@ inline void Stack<T>::copyElements(const Stack & other)
 template <typename T>
 std::ostream& operator << (std::ostream& out, const Stack<T>& stack) {
 	Stack<T> intermediate;
-	Stack<T>::Node *node = stack._back;
+	typename Stack<T>::Node *node = stack._back;
 	while (node != nullptr) {
 		intermediate.push(node->key);
 		node = node->prev;
@@ -213,7 +169,7 @@ std::ostream& operator << (std::ostream& out, const Stack<T>& stack) {
 
 template <typename T>
 bool operator ==(const Stack<T>& fst, const Stack<T>& scd) {
-	Stack<T>::Node *fstNode = fst._back, *scdNode = scd._back;
+	typename Stack<T>::Node *fstNode = fst._back, *scdNode = scd._back;
 	while (fstNode != nullptr && scdNode != nullptr) {
 		if (fstNode->key != scdNode->key)
 			return false;

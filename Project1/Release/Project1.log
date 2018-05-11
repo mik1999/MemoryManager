@@ -1,0 +1,6 @@
+﻿  Source.cpp
+Source.obj : error LNK2001: неразрешенный внешний символ ""public: void __thiscall CMemoryManagerSwitcher::switchTo(class IMemoryManager &)" (?switchTo@CMemoryManagerSwitcher@@QAEXAAVIMemoryManager@@@Z)"
+Source.obj : error LNK2001: неразрешенный внешний символ ""public: __thiscall CMemoryManagerSwitcher::~CMemoryManagerSwitcher(void)" (??1CMemoryManagerSwitcher@@QAE@XZ)"
+Source.obj : error LNK2001: неразрешенный внешний символ ""public: virtual __thiscall IMemoryManager::~IMemoryManager(void)" (??1IMemoryManager@@UAE@XZ)"
+Source.obj : error LNK2001: неразрешенный внешний символ ""public: __thiscall IMemoryManager::IMemoryManager(void)" (??0IMemoryManager@@QAE@XZ)"
+C:\МФТИ\programs\Semester2\C++\MemoryManager\Release\Project1.exe : fatal error LNK1120: неразрешенных внешних элементов: 4

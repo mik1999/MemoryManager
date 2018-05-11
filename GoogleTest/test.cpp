@@ -6,9 +6,13 @@
 #include "../MemoryManager/CMemoryManagerSwitcher.h"
 #include "../MemoryManager/AllocatorBasedManager.h"
 #include "../MemoryManager/CAllocatedOn.h"
+#include "../MemoryManager/IMemoryManager.cpp"
+#include "../MemoryManager/CMemoryManagerSwitcher.cpp"
+#include "../MemoryManager/AllocationStrategy.cpp"
 
 #include "../../XorList/XorList/StackAllocator.h"
 #include "../../XorList/XorList/ListOperation.h"
+
 
 std::random_device rd;
 
@@ -176,12 +180,12 @@ double workingTime(std::list<ListOperation<int> > &ops) {
 	return double(endTime - begTime) / CLOCKS_PER_SEC;
 }
 
-TEST(WorkingTimeCompare, DISABLED_Main) {
+TEST(WorkingTimeCompare, Main) {
 	CMemoryManagerSwitcher switcher;
 	AllocatorBasedManager<std::allocator<char> > manager1;
 	AllocatorBasedManager<std::allocator<long long> > manager2;
 	AllocatorBasedManager<StackAllocator<char> > manager3;
-	auto ops = generateRandomLeapOperations<int, rand>(1000000);
+	auto ops = generateRandomLeapOperations<int, rand>(10000000);
 	std::ofstream workingTimeCompareResult("workingTimeCompareResult.txt");
 	switcher.switchToDefault();
 	workingTimeCompareResult << std::fixed << std::setprecision(2);
@@ -192,6 +196,8 @@ TEST(WorkingTimeCompare, DISABLED_Main) {
 	workingTimeCompareResult << "STD allocator on long long: " << workingTime(ops) << "\n";
 	switcher.switchTo(manager3);
 	workingTimeCompareResult << "StackAllocator: " << workingTime(ops) << "\n";
+	switcher.switchToDefault();
+	workingTimeCompareResult << "Default again: " << workingTime(ops) << "\n";
 }
 
 class NarrowMemoryManager : public IMemoryManager {
